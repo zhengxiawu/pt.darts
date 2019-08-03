@@ -4,7 +4,6 @@ import os
 import genotypes as gt
 from functools import partial
 import torch
-import time
 
 
 def get_parser(name):
@@ -108,9 +107,8 @@ class AugmentConfig(BaseConfig):
         parser = self.build_parser()
         args = parser.parse_args()
         super().__init__(**vars(args))
-        time_str = time.asctime(time.localtime()).replace(' ', '_')
 
         self.data_path = '/userhome/temp_data/cifar10'
-        self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, time_str)
+        self.path = os.path.join('project/pt.darts/experiment/', self.name)
         self.genotype = gt.from_str(self.genotype)
         self.gpus = parse_gpus(self.gpus)

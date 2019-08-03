@@ -23,6 +23,7 @@ config.print_params(logger.info)
 
 def main():
     logger.info("Logger is set - training start")
+    logger.info("Torch version is: {}".format(torch.__version__))
 
     # set default gpu device id
     torch.cuda.set_device(config.gpus[0])
