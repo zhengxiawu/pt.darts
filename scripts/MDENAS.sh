@@ -2,6 +2,7 @@
 nvidia-smi
 mount -t tmpfs -o size=1G tmpfs /userhome/temp_data
 cp -r /userhome/data/cifar10 /userhome/temp_data/
+pip3 install -U torch==1.1.0.post2
 python /userhome/project/pt.darts/augment.py --name MDENAS --dataset cifar10 --genotype "Genotype(
     normal=[
         [('sep_conv_5x5', 1), ('sep_conv_3x3', 0)],

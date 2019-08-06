@@ -5,6 +5,8 @@ import genotypes as gt
 from functools import partial
 import torch
 import time
+import random
+import string
 
 
 def get_parser(name):
@@ -101,6 +103,7 @@ class AugmentConfig(BaseConfig):
         parser.add_argument('--drop_path_prob', type=float, default=0.2, help='drop path prob')
 
         parser.add_argument('--genotype', required=True, help='Cell genotype')
+        parser.add_argument('--save_path', default= '',help='save_path')
 
         return parser
 
@@ -109,8 +112,11 @@ class AugmentConfig(BaseConfig):
         args = parser.parse_args()
         super().__init__(**vars(args))
         time_str = time.asctime(time.localtime()).replace(' ', '_')
-
+        random_str = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
         self.data_path = '/userhome/temp_data/cifar10'
-        self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, time_str)
+        if self.save_path:
+            self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, self.save_path)
+        else:
+            self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, time_str + random_str)
         self.genotype = gt.from_str(self.genotype)
         self.gpus = parse_gpus(self.gpus)
