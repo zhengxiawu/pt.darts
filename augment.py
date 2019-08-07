@@ -7,6 +7,7 @@ from tensorboardX import SummaryWriter
 from config import AugmentConfig
 import utils
 from models.augment_cnn import AugmentCNN
+import time
 
 
 config = AugmentConfig()
@@ -33,7 +34,7 @@ def main():
     torch.manual_seed(config.seed)
     torch.cuda.manual_seed_all(config.seed)
 
-    torch.backends.cudnn.benchmark = True
+    #torch.backends.cudnn.benchmark = True
 
     # get data with meta info
     input_size, input_channels, n_classes, train_data, valid_data = utils.get_data(
@@ -43,11 +44,10 @@ def main():
     use_aux = config.aux_weight > 0.
     model = AugmentCNN(input_size, input_channels, config.init_channels, n_classes, config.layers,
                        use_aux, config.genotype)
-    model = nn.DataParallel(model, device_ids=config.gpus).to(device)
-
     # model size
     mb_params = utils.param_size(model)
     logger.info("Model size = {:.3f} MB".format(mb_params))
+    model = nn.DataParallel(model, device_ids=config.gpus).to(device)
 
     # weights optimizer
     optimizer = torch.optim.SGD(model.parameters(), config.lr, momentum=config.momentum,
@@ -103,7 +103,6 @@ def train(train_loader, model, optimizer, criterion, epoch):
     writer.add_scalar('train/lr', cur_lr, cur_step)
 
     model.train()
-
     for step, (X, y) in enumerate(train_loader):
         X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
         N = X.size(0)
@@ -134,7 +133,6 @@ def train(train_loader, model, optimizer, criterion, epoch):
         writer.add_scalar('train/top1', prec1.item(), cur_step)
         writer.add_scalar('train/top5', prec5.item(), cur_step)
         cur_step += 1
-
     logger.info("Train: [{:3d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
 
 

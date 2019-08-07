@@ -102,8 +102,9 @@ class AugmentConfig(BaseConfig):
         parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
         parser.add_argument('--drop_path_prob', type=float, default=0.2, help='drop path prob')
 
-        parser.add_argument('--genotype', required=True, help='Cell genotype')
-        parser.add_argument('--save_path', default= '',help='save_path')
+        parser.add_argument('--genotype', required=False, help='Cell genotype')
+        parser.add_argument('--save_path', default='', help='save_path')
+        parser.add_argument('--file', default='', help='file_save_')
 
         return parser
 
@@ -118,5 +119,16 @@ class AugmentConfig(BaseConfig):
             self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, self.save_path)
         else:
             self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, time_str + random_str)
+        if self.file:
+            file_ = open(self.file)
+            lines = file_.readlines()
+            for i, line in enumerate(lines):
+                self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, str(i))
+                if os.path.isdir(self.path):
+                    continue
+                else:
+                    self.genotype = line
+                    print(line)
+                    break
         self.genotype = gt.from_str(self.genotype)
         self.gpus = parse_gpus(self.gpus)
