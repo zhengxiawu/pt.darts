@@ -137,7 +137,7 @@ class CIFAR_INPUT_ITER():
             batch.append(img)
             labels.append(label)
             self.i = (self.i + 1) % self.n
-        return (batch, labels)
+        return batch,labels
 
     next = __next__
 
@@ -160,26 +160,53 @@ def get_cifar_iter_dali(type, image_dir, batch_size, num_threads, local_rank=0, 
         return dali_iter_val
 
 
+def get_cifar_iter_torch(type, image_dir, batch_size, num_threads, cutout=0):
+    CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
+    CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
+    if type == 'train':
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        ])
+        train_dst = CIFAR10(root=image_dir, train=True, download=True, transform=transform_train)
+        train_iter = torch.utils.data.DataLoader(train_dst, batch_size=batch_size, shuffle=True, pin_memory=True,
+                                                 num_workers=num_threads)
+        return train_iter
+    else:
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        ])
+        test_dst = CIFAR10(root=image_dir, train=False, download=True, transform=transform_test)
+        test_iter = torch.utils.data.DataLoader(test_dst, batch_size=batch_size, shuffle=False, pin_memory=True,
+                                                num_workers=num_threads)
+        return test_iter
+
+
 if __name__ == '__main__':
+    import pdb
     pass
-    # train_loader = get_cifar_iter_dali(type='train', image_dir='/userhome/memory_data/cifar10', batch_size=256,
-    #                                    num_threads=4)
-    # print('start iterate')
-    # start = time.time()
-    # for i, data in enumerate(train_loader):
-    #     images = data[0]["data"].cuda(async=True)
-    #     labels = data[0]["label"].squeeze().long().cuda(async=True)
-    # end = time.time()
-    # print('end iterate')
-    # print('dali iterate time: %fs' % (end - start))
-    #
-    # train_loader = get_cifar_iter_torch(type='train', image_dir='/userhome/memory_data/cifar10', batch_size=256,
-    #                                     num_threads=4)
-    # print('start iterate')
-    # start = time.time()
-    # for i, data in enumerate(train_loader):
-    #     images = data[0].cuda(async=True)
-    #     labels = data[1].cuda(async=True)
-    # end = time.time()
-    # print('end iterate')
-    # print('dali iterate time: %fs' % (end - start))
+    train_loader = get_cifar_iter_dali(type='train', image_dir='/userhome/temp_data/cifar10', batch_size=256,
+                                       num_threads=4)
+    print('start iterate')
+    start = time.time()
+    for i, data in enumerate(train_loader):
+        pdb.set_trace()
+        images = data[0]["data"].cuda(async=True)
+        labels = data[0]["label"].squeeze().long().cuda(async=True)
+    end = time.time()
+    print('end iterate')
+    print('dali iterate time: %fs' % (end - start))
+
+    train_loader = get_cifar_iter_torch(type='train', image_dir='/userhome/temp_data/cifar10', batch_size=256,
+                                        num_threads=4)
+    print('start iterate')
+    start = time.time()
+    for i, data in enumerate(train_loader):
+        images = data[0].cuda(async=True)
+        labels = data[1].cuda(async=True)
+    end = time.time()
+    print('end iterate')
+    print('dali iterate time: %fs' % (end - start))

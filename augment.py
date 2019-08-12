@@ -1,14 +1,11 @@
 """ Training augmented model """
-import os
-import torch
 import torch.nn as nn
 import torchvision
-import numpy as np
 from tensorboardX import SummaryWriter
 from config import AugmentConfig
 import utils
 from models.augment_cnn import AugmentCNN
-import time
+from utils import *
 
 
 config = AugmentConfig()
@@ -86,6 +83,10 @@ def main():
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, config.epochs)
 
     best_top1 = 0.
+    if config.data_loader_type == 'DALI':
+        len_train_loader = get_train_loader_len(config.dataset.lower(), config.batch_size, is_train=True)
+    else:
+        len_train_loader = len(train_loader)
     # training loop
     for epoch in range(config.epochs):
         lr_scheduler.step()
@@ -96,7 +97,7 @@ def main():
         train(train_loader, model, optimizer, criterion, epoch)
 
         # validation
-        cur_step = (epoch+1) * len(train_loader)
+        cur_step = (epoch+1) * len_train_loader
         top1 = validate(valid_loader, model, criterion, epoch, cur_step)
 
         # save
@@ -117,14 +118,7 @@ def train(train_loader, model, optimizer, criterion, epoch):
     top5 = utils.AverageMeter()
     losses = utils.AverageMeter()
 
-    cur_step = epoch*len(train_loader)
-    cur_lr = optimizer.param_groups[0]['lr']
-    logger.info("Epoch {} LR {}".format(epoch, cur_lr))
-    writer.add_scalar('train/lr', cur_lr, cur_step)
-
-    model.train()
-    for step, (X, y) in enumerate(train_loader):
-        X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
+    def train_iter(X, y):
         N = X.size(0)
 
         optimizer.zero_grad()
@@ -142,17 +136,37 @@ def train(train_loader, model, optimizer, criterion, epoch):
         top1.update(prec1.item(), N)
         top5.update(prec5.item(), N)
 
-        if step % config.print_freq == 0 or step == len(train_loader)-1:
+        if step % config.print_freq == 0 or step == len_train_loader - 1:
             logger.info(
                 "Train: [{:3d}/{}] Step {:03d}/{:03d} Loss {losses.avg:.3f} "
                 "Prec@(1,5) ({top1.avg:.1%}, {top5.avg:.1%})".format(
-                    epoch+1, config.epochs, step, len(train_loader)-1, losses=losses,
+                    epoch + 1, config.epochs, step, len_train_loader - 1, losses=losses,
                     top1=top1, top5=top5))
 
-        writer.add_scalar('train/loss', loss.item(), cur_step)
-        writer.add_scalar('train/top1', prec1.item(), cur_step)
-        writer.add_scalar('train/top5', prec5.item(), cur_step)
-        cur_step += 1
+    if config.data_loader_type == 'DALI':
+        len_train_loader = get_train_loader_len(config.dataset.lower(), config.batch_size, is_train=True)
+    else:
+        len_train_loader = len(train_loader)
+    cur_step = epoch*len_train_loader
+    cur_lr = optimizer.param_groups[0]['lr']
+    logger.info("Epoch {} LR {}".format(epoch, cur_lr))
+    writer.add_scalar('train/lr', cur_lr, cur_step)
+
+    model.train()
+    if config.data_loader_type == 'DALI':
+        for step, data in enumerate(train_loader):
+            X = data[0]["data"].cuda()
+            y = data[0]["label"].squeeze().long().cuda()
+            if config.cutout_length > 0:
+                X = cutout_batch(X, config.cutout_length)
+            train_iter(X, y)
+            cur_step += 1
+        train_loader.reset()
+    else:
+        for step, (X, y) in enumerate(train_loader):
+            X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
+            train_iter(X, y)
+            cur_step += 1
     logger.info("Train: [{:3d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
 
 
@@ -160,35 +174,46 @@ def validate(valid_loader, model, criterion, epoch, cur_step):
     top1 = utils.AverageMeter()
     top5 = utils.AverageMeter()
     losses = utils.AverageMeter()
+    if config.data_loader_type == 'DALI':
+        len_val_loader = get_train_loader_len(config.dataset.lower(), config.batch_size, is_train=False)
+    else:
+        len_val_loader = len(valid_loader)
+
+    def val_iter(X, y):
+        N = X.size(0)
+
+        logits, _ = model(X)
+        loss = criterion(logits, y)
+
+        prec1, prec5 = utils.accuracy(logits, y, topk=(1, 5))
+        losses.update(loss.item(), N)
+        top1.update(prec1.item(), N)
+        top5.update(prec5.item(), N)
+
+        if step % config.print_freq == 0 or step == len_val_loader - 1:
+            logger.info(
+                "Valid: [{:3d}/{}] Step {:03d}/{:03d} Loss {losses.avg:.3f} "
+                "Prec@(1,5) ({top1.avg:.1%}, {top5.avg:.1%})".format(
+                    epoch + 1, config.epochs, step, len_val_loader - 1, losses=losses,
+                    top1=top1, top5=top5))
 
     model.eval()
 
     with torch.no_grad():
-        for step, (X, y) in enumerate(valid_loader):
-            X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
-            N = X.size(0)
-
-            logits, _ = model(X)
-            loss = criterion(logits, y)
-
-            prec1, prec5 = utils.accuracy(logits, y, topk=(1, 5))
-            losses.update(loss.item(), N)
-            top1.update(prec1.item(), N)
-            top5.update(prec5.item(), N)
-
-            if step % config.print_freq == 0 or step == len(valid_loader)-1:
-                logger.info(
-                    "Valid: [{:3d}/{}] Step {:03d}/{:03d} Loss {losses.avg:.3f} "
-                    "Prec@(1,5) ({top1.avg:.1%}, {top5.avg:.1%})".format(
-                        epoch+1, config.epochs, step, len(valid_loader)-1, losses=losses,
-                        top1=top1, top5=top5))
-
+        if config.data_loader_type == 'DALI':
+            for step, data in enumerate(valid_loader):
+                X = data[0]["data"].cuda()
+                y = data[0]["label"].squeeze().long().cuda()
+                val_iter(X, y)
+            valid_loader.reset()
+        else:
+            for step, (X, y) in enumerate(valid_loader):
+                X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
+                val_iter(X, y)
     writer.add_scalar('val/loss', losses.avg, cur_step)
     writer.add_scalar('val/top1', top1.avg, cur_step)
     writer.add_scalar('val/top5', top5.avg, cur_step)
-
     logger.info("Valid: [{:3d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
-
     return top1.avg
 
 

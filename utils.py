@@ -115,3 +115,35 @@ def save_checkpoint(state, ckpt_dir, is_best=False):
     if is_best:
         best_filename = os.path.join(ckpt_dir, 'best.pth.tar')
         shutil.copyfile(filename, best_filename)
+
+
+def get_train_loader_len(dataset, batch_size, is_train):
+    if dataset == 'cifar10':
+        if is_train:
+            return round(50000/batch_size)
+        else:
+            return round(10000/batch_size)
+    else:
+        raise NotImplementedError
+
+
+def cutout_batch(img, length=16):
+    h, w = img.size(2), img.size(3)
+    masks = []
+    for i in range(img.size(0)):
+        mask = np.ones((h, w), np.float32)
+        y = np.random.randint(h)
+        x = np.random.randint(w)
+
+        y1 = np.clip(y - length // 2, 0, h)
+        y2 = np.clip(y + length // 2, 0, h)
+        x1 = np.clip(x - length // 2, 0, w)
+        x2 = np.clip(x + length // 2, 0, w)
+
+        mask[y1: y2, x1: x2] = 0.
+        mask = torch.from_numpy(mask)
+        mask = mask.expand_as(img[0]).unsqueeze(0)
+        masks.append(mask)
+    masks = torch.cat(masks).cuda()
+    img *= masks
+    return img
