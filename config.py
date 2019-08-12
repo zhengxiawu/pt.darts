@@ -84,6 +84,7 @@ class AugmentConfig(BaseConfig):
         parser = get_parser("Augment config")
         parser.add_argument('--name', required=True)
         parser.add_argument('--dataset', required=True, help='CIFAR10 / MNIST / FashionMNIST')
+        parser.add_argument('--data_loader_type', required=False, help='Torch / DALI')
         parser.add_argument('--batch_size', type=int, default=96, help='batch size')
         parser.add_argument('--lr', type=float, default=0.025, help='lr for weights')
         parser.add_argument('--momentum', type=float, default=0.9, help='momentum')

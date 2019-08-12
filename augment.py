@@ -55,16 +55,34 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), config.lr, momentum=config.momentum,
                                 weight_decay=config.weight_decay)
 
-    train_loader = torch.utils.data.DataLoader(train_data,
-                                               batch_size=config.batch_size,
-                                               shuffle=True,
-                                               num_workers=config.workers,
-                                               pin_memory=True)
-    valid_loader = torch.utils.data.DataLoader(valid_data,
-                                               batch_size=config.batch_size,
-                                               shuffle=False,
-                                               num_workers=config.workers,
-                                               pin_memory=True)
+    # get data loader
+    if config.data_loader_type == 'Torch':
+        train_loader = torch.utils.data.DataLoader(train_data,
+                                                   batch_size=config.batch_size,
+                                                   shuffle=True,
+                                                   num_workers=config.workers,
+                                                   pin_memory=True)
+        valid_loader = torch.utils.data.DataLoader(valid_data,
+                                                   batch_size=config.batch_size,
+                                                   shuffle=False,
+                                                   num_workers=config.workers,
+                                                   pin_memory=True)
+    elif config.data_loader_type == 'DALI':
+        config.dataset = config.dataset.lower()
+        if config.dataset == 'cifar10':
+            from DataLoaders_DALI import cifar10
+            train_loader = cifar10.get_cifar_iter_dali(type='train',
+                                                       image_dir=config.data_path,
+                                                       batch_size=config.batch_size,
+                                                       num_threads=config.workers)
+            valid_loader = cifar10.get_cifar_iter_dali(type='train',
+                                                       image_dir=config.data_path,
+                                                       batch_size=config.batch_size,
+                                                       num_threads=config.workers)
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, config.epochs)
 
     best_top1 = 0.
