@@ -72,7 +72,7 @@ def main():
                                                        image_dir=config.data_path,
                                                        batch_size=config.batch_size,
                                                        num_threads=config.workers)
-            valid_loader = cifar10.get_cifar_iter_dali(type='train',
+            valid_loader = cifar10.get_cifar_iter_dali(type='val',
                                                        image_dir=config.data_path,
                                                        batch_size=config.batch_size,
                                                        num_threads=config.workers)
@@ -155,8 +155,8 @@ def train(train_loader, model, optimizer, criterion, epoch):
     model.train()
     if config.data_loader_type == 'DALI':
         for step, data in enumerate(train_loader):
-            X = data[0]["data"].cuda()
-            y = data[0]["label"].squeeze().long().cuda()
+            X = data[0]["data"].cuda(async=True)
+            y = data[0]["label"].squeeze().long().cuda(async=True)
             if config.cutout_length > 0:
                 X = cutout_batch(X, config.cutout_length)
             train_iter(X, y)
@@ -202,8 +202,8 @@ def validate(valid_loader, model, criterion, epoch, cur_step):
     with torch.no_grad():
         if config.data_loader_type == 'DALI':
             for step, data in enumerate(valid_loader):
-                X = data[0]["data"].cuda()
-                y = data[0]["label"].squeeze().long().cuda()
+                X = data[0]["data"].cuda(async=True)
+                y = data[0]["label"].squeeze().long().cuda(async=True)
                 val_iter(X, y)
             valid_loader.reset()
         else:
