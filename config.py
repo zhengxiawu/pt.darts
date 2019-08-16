@@ -84,6 +84,7 @@ class AugmentConfig(BaseConfig):
         parser = get_parser("Augment config")
         parser.add_argument('--name', required=True)
         parser.add_argument('--dataset', required=True, help='CIFAR10 / MNIST / FashionMNIST')
+        parser.add_argument('--data_path', help='data_path', default='/userhome/temp_data/cifar10')
         parser.add_argument('--data_loader_type', required=False, help='Torch / DALI', default='Torch')
         parser.add_argument('--batch_size', type=int, default=96, help='batch size')
         parser.add_argument('--lr', type=float, default=0.025, help='lr for weights')
@@ -105,6 +106,7 @@ class AugmentConfig(BaseConfig):
 
         parser.add_argument('--genotype', required=False, help='Cell genotype')
         parser.add_argument('--save_path', default='', help='save_path')
+        parser.add_argument('--save_dir', default='/userhome/project/pt.darts/experiment/', help='save_dir')
         parser.add_argument('--file', default='', help='file_save_')
 
         return parser
@@ -115,11 +117,10 @@ class AugmentConfig(BaseConfig):
         super().__init__(**vars(args))
         time_str = time.asctime(time.localtime()).replace(' ', '_')
         random_str = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-        self.data_path = '/userhome/temp_data/cifar10'
         if self.save_path:
-            self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, self.save_path)
+            self.path = os.path.join(self.save_dir, self.name, self.save_path)
         else:
-            self.path = os.path.join('/userhome/project/pt.darts/experiment/', self.name, time_str + random_str)
+            self.path = os.path.join(self.save_dir, self.name, time_str + random_str)
         if self.file:
             file_ = open(self.file)
             lines = file_.readlines()
