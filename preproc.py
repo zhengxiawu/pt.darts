@@ -29,7 +29,7 @@ class Cutout(object):
 
 def data_transforms(dataset, cutout_length):
     dataset = dataset.lower()
-    if dataset == 'cifar10':
+    if dataset == 'cifar10' or dataset == 'cifar10_16' or dataset == 'cifar10_24':
         MEAN = [0.49139968, 0.48215827, 0.44653124]
         STD = [0.24703233, 0.24348505, 0.26158768]
         transf = [
@@ -57,8 +57,17 @@ def data_transforms(dataset, cutout_length):
         transforms.Normalize(MEAN, STD)
     ]
 
-    train_transform = transforms.Compose(transf + normalize)
-    valid_transform = transforms.Compose(normalize)
+    if dataset == 'cifar10_16':
+        transf.append(transforms.Resize((16, 16)))
+        train_transform = transforms.Compose(transf + normalize)
+        valid_transform = transforms.Compose([transforms.Resize((16, 16))] + normalize)
+    elif dataset == 'cifar10_24':
+        transf.append(transforms.Resize((24, 24)))
+        train_transform = transforms.Compose(transf + normalize)
+        valid_transform = transforms.Compose([transforms.Resize((24, 24))] + normalize)
+    else:
+        train_transform = transforms.Compose(transf + normalize)
+        valid_transform = transforms.Compose(normalize)
 
     if cutout_length > 0:
         train_transform.transforms.append(Cutout(cutout_length))

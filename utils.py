@@ -12,7 +12,7 @@ def get_data(dataset, data_path, cutout_length, validation):
     """ Get torchvision dataset """
     dataset = dataset.lower()
 
-    if dataset == 'cifar10':
+    if dataset == 'cifar10' or dataset == 'cifar10_24' or dataset == 'cifar10_16':
         dset_cls = dset.CIFAR10
         n_classes = 10
     elif dataset == 'mnist':
@@ -35,6 +35,10 @@ def get_data(dataset, data_path, cutout_length, validation):
     input_channels = 3 if len(shape) == 4 else 1
     assert shape[1] == shape[2], "not expected shape = {}".format(shape)
     input_size = shape[1]
+    if dataset == 'cifar10_16':
+        input_size = 16
+    if dataset == 'cifar10_24':
+        input_size = 24
 
     ret = [input_size, input_channels, n_classes, trn_data]
     if validation: # append validation data

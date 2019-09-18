@@ -83,7 +83,8 @@ class AugmentConfig(BaseConfig):
     def build_parser(self):
         parser = get_parser("Augment config")
         parser.add_argument('--name', required=True)
-        parser.add_argument('--dataset', required=True, help='CIFAR10 / MNIST / FashionMNIST')
+        parser.add_argument('--dataset', required=False, default='CIFAR10',
+                            help='CIFAR10 / MNIST / FashionMNIST / cifar10_24 / cifar10_16')
         parser.add_argument('--data_path', help='data_path', default='/userhome/temp_data/cifar10')
         parser.add_argument('--data_loader_type', required=False, help='Torch / DALI', default='Torch')
         parser.add_argument('--batch_size', type=int, default=96, help='batch size')
@@ -121,6 +122,8 @@ class AugmentConfig(BaseConfig):
             self.path = os.path.join(self.save_dir, self.name, self.save_path)
         else:
             self.path = os.path.join(self.save_dir, self.name, time_str + random_str)
+        if os.path.exists(self.path):
+            exit('The path is exists!!')
         if self.file:
             file_ = open(self.file)
             lines = file_.readlines()
@@ -133,4 +136,58 @@ class AugmentConfig(BaseConfig):
                     print(line)
                     break
         self.genotype = gt.from_str(self.genotype)
+        self.gpus = parse_gpus(self.gpus)
+
+
+class RandomSearchConfig(BaseConfig):
+    def build_parser(self):
+        parser = get_parser("Augment config")
+        parser.add_argument('--name', required=True)
+        parser.add_argument('--dataset', required=True, help='CIFAR10 / MNIST / FashionMNIST / cifar10_24 / cifar10_16')
+        parser.add_argument('--data_path', help='data_path', default='/userhome/temp_data/cifar10')
+        parser.add_argument('--data_loader_type', required=False, help='Torch / DALI', default='Torch')
+        parser.add_argument('--batch_size', type=int, default=96, help='batch size')
+        parser.add_argument('--lr', type=float, default=0.025, help='lr for weights')
+        parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
+        parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
+        parser.add_argument('--grad_clip', type=float, default=5.,
+                            help='gradient clipping for weights')
+        parser.add_argument('--print_freq', type=int, default=200, help='print frequency')
+        parser.add_argument('--gpus', default='0', help='gpu device ids separated by comma. '
+                            '`all` indicates use all gpus.')
+        parser.add_argument('--epochs', type=int, default=600, help='# of training epochs')
+        parser.add_argument('--init_channels', type=int, default=36)
+        parser.add_argument('--layers', type=int, default=20, help='# of layers')
+        parser.add_argument('--seed', type=int, default=2, help='random seed')
+        parser.add_argument('--workers', type=int, default=4, help='# of workers')
+        parser.add_argument('--aux_weight', type=float, default=0.4, help='auxiliary loss weight')
+        parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
+        parser.add_argument('--drop_path_prob', type=float, default=0.2, help='drop path prob')
+
+        parser.add_argument('--genotype', required=False, help='Cell genotype')
+        parser.add_argument('--save_path', default='', help='save_path')
+        parser.add_argument('--save_dir', default='/userhome/project/pt.darts/experiment/random_search', help='save_dir')
+
+        return parser
+
+    def __init__(self):
+        parser = self.build_parser()
+        args = parser.parse_args()
+        super().__init__(**vars(args))
+
+        # if self.save_path:
+        #     self.path = os.path.join(self.save_dir, self.name, self.save_path)
+        # else:
+        #     self.path = os.path.join(self.save_dir, self.name, time_str + random_str)
+        self.file = False
+        for i in range(100):
+            self.path = os.path.join(self.save_dir, self.name, str(i))
+            if os.path.exists(self.path):
+                continue
+            else:
+                self.file = '/userhome/project/Auto_NAS/experiment/random_architecture/random_10/{0}.txt'\
+                    .format(str(i))
+                break
+        if not self.file:
+            exit()
         self.gpus = parse_gpus(self.gpus)
