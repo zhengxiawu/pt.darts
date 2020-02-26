@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+
 def find_training_ge(search_sub_folders, search_folder, train_folder):
     trained_ge = []
     for search_sub_folder in search_sub_folders:
@@ -21,6 +22,7 @@ def find_training_ge(search_sub_folders, search_folder, train_folder):
                     continue
                 else:
                     return train_path, ge_str
+    print(trained_ge)
 
 
 if __name__ == '__main__':
@@ -31,4 +33,5 @@ if __name__ == '__main__':
     command = 'python /userhome/project/pt.darts/augment.py --save_path {0} --name {1} --genotype "{2}" --save_dir {3}'.\
         format(find_sub_folder.split('/')[-1], find_sub_folder.split('/')[-2], find_ge, train_folder)
     print("training start")
-    subprocess.call(command, shell=True)
+    print(command)
+    # subprocess.call(command, shell=True)
